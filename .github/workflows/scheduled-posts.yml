@@ -1,0 +1,44 @@
+name: Daily Relief Posts
+
+on:
+  schedule:
+    # Run once per day at 12:00 UTC (noon)
+    - cron: "0 12 * * *"
+
+jobs:
+  post-relief:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15  # Prevent hanging jobs
+    environment: main 
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Create .env file
+        run: |
+          cat << EOF > .env
+          BLUESKY_HANDLE=${{ secrets.BLUESKY_HANDLE }}
+          BLUESKY_APP_PASSWORD=${{ secrets.BLUESKY_APP_PASSWORD }}
+          ELEVATION_API_KEY=${{ secrets.ELEVATION_API_KEY }}
+          ELEVATION_PROVIDER=${{ secrets.ELEVATION_PROVIDER }}
+          ELEVATION_BASE_URL=${{ secrets.ELEVATION_BASE_URL }}
+          EOF
+
+      - name: Cache Deno dependencies
+        uses: actions/cache@v3
+        with:
+          path: .deno_dir
+          key: ${{ runner.os }}-deno-${{ hashFiles('**/deno.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-deno-
+
+      - name: Run relief bot
+        run: deno task start
+        env:
+          DENO_DIR: ${{ github.workspace }}/.deno_dir

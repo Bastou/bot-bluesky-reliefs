@@ -1,0 +1,10 @@
+{
+  "imports": {
+    "@/": "./src/",
+    "std/": "https://deno.land/std@0.210.0/",
+    "canvas": "https://deno.land/x/skia_canvas@0.5.8/mod.ts", 
+    "dotenv": "https://deno.land/std@0.210.0/dotenv/mod.ts",
+    "http/": "https://deno.land/std@0.210.0/http/",
+    "@atproto/api": "npm:@atproto/api"
+  }
+} 

@@ -1,0 +1,35 @@
+# Virtual Environment
+venv/
+env/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+.cursor/
+.sublime-project/
+
+# Environment variables
+.env
+.env.local
+
+# Logs
+*.log
+
+# OS specific
+.DS_Store
+Thumbs.db 
+
+# plugins
+.history
+
+# Deno
+deno.lock
+deno.json
+
+# Generated files
+cache/
+
+# Archives
+_archives/
+
