@@ -2,8 +2,8 @@ name: Daily Relief Posts
 
 on:
   schedule:
-    # Run once per day at 12:00 UTC (noon)
-    - cron: "0 12 * * *"
+    # Run once per day at 10:00 UTC
+    - cron: "0 10 * * *"
 
 jobs:
   post-relief:
