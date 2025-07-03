@@ -1,6 +1,7 @@
 import { Config } from "../config/config.ts";
 import { Coordinate, getCoordinateArea, calculateBoundingBox, generateCoordinateGrid } from "../utils/coordinates.ts";
-import { fetchElevation, ElevationData, getRequestStats, checkCoordinateIsLand, getTileCoordinates } from "../api/elevation.ts";
+import { fetchElevation, ElevationData, getRequestStats, getTileCoordinates } from "../api/elevation.ts";
+import { checkCoordinateIsWater } from "../utils/water-detection.ts";
 import { generateRelief } from "./relief.ts";
 import { saveCanvasToFile } from "./canvas.ts";
 import { path, delay } from "../deps.ts";
@@ -14,14 +15,21 @@ export async function generateReliefFromCoordinate(
   centerCoord: Coordinate,
   config: Config,
   style?: string,
-  customGridResolution?: number
+  customGridResolution?: number,
+  skipWaterCheck = false
 ): Promise<GenerationResult> {
   try {
-    // Verify the coordinate is on land before proceeding with full grid
-    const isLand = await checkCoordinateIsLand(centerCoord.latitude, centerCoord.longitude, config);
-    if (!isLand) {
-      console.log("Coordinate is on water. Cannot generate relief.");
-      throw new Error("Cannot generate relief for water location. Please choose a land location.");
+    console.log(`Generating relief for coordinates: ${centerCoord.latitude}, ${centerCoord.longitude}`);
+    
+    if (!skipWaterCheck) {
+      // 1. Verify the coordinate is on land before proceeding with full grid
+      const waterResult = await checkCoordinateIsWater(centerCoord.latitude, centerCoord.longitude, config);
+      if (waterResult.isWater) {
+        console.log(`Coordinate is on water (method: ${waterResult.method}, confidence: ${(waterResult.confidence * 100).toFixed(1)}%). Cannot generate relief.`);
+        throw new Error("Cannot generate relief for water location. Please choose a land location.");
+      }
+    } else {
+      console.log("Skipping water check (already validated)");
     }
 
     // 2. Generate area around the coordinate
@@ -71,7 +79,7 @@ export async function generateReliefFromCoordinate(
       const maxAttempts = 2; // Only retry once to avoid hitting daily limits
       let wasFromCache = false;
       
-      console.log(`- Fetched point ${i+1}/${grid.length}: ${coord.latitude}, ${coord.longitude}`);
+      //console.log(`- Fetched point ${i+1}/${grid.length}: ${coord.latitude}, ${coord.longitude}`);
       
       while (!success && attempts < maxAttempts) {
         try {
@@ -95,7 +103,7 @@ export async function generateReliefFromCoordinate(
             success = true;
             // Only log non-cached requests or errors
             if (!wasFromCache) {
-              console.log(`- Point ${i + 1}: ${response.data[0].elevation}m`);
+              //console.log(`- Point ${i + 1}: ${response.data[0].elevation}m`);
             }
           } else if (response.rateLimited) {
             // Rate limit hit, wait longer

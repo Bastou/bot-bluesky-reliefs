@@ -106,4 +106,125 @@ export class BlueskyBot {
     const lastNumber = await this.getLastRenderNumber();
     return lastNumber + 1;
   }
+
+  /**
+   * Get comments/replies from the latest post 
+   */
+  async getLatestPostComments(): Promise<Array<{ text: string; author: string; timestamp: string }>> {
+    try {
+      // First get the latest post
+      const response = await this.agent.getAuthorFeed({
+        actor: this.handle,
+        limit: 1
+      });
+
+      if (!response.data.feed || response.data.feed.length === 0) {
+        console.log("No posts found");
+        return [];
+      }
+
+      const latestPost = response.data.feed[0];
+      const postUri = latestPost.post.uri;
+      
+      console.log(`Checking comments for latest post: ${postUri}`);
+
+      // Get replies to the latest post
+      const repliesResponse = await this.agent.getPostThread({
+        uri: postUri,
+        depth: 1
+      });
+
+      const comments: Array<{ text: string; author: string; timestamp: string }> = [];
+      
+      // Extract replies from the thread
+      if (repliesResponse.data.thread && '$type' in repliesResponse.data.thread && 
+          repliesResponse.data.thread.$type === 'app.bsky.feed.defs#threadViewPost' &&
+          'replies' in repliesResponse.data.thread && repliesResponse.data.thread.replies) {
+        for (const reply of repliesResponse.data.thread.replies) {
+          if (reply && '$type' in reply && 
+              reply.$type === 'app.bsky.feed.defs#threadViewPost' &&
+              'post' in reply && reply.post?.record?.text && reply.post?.author?.handle) {
+            comments.push({
+              text: reply.post.record.text as string,
+              author: reply.post.author.handle as string,
+              timestamp: (reply.post.record as any)?.createdAt || new Date().toISOString()
+            });
+          }
+        }
+      }
+
+      console.log(`Found ${comments.length} comments on latest post`);
+      return comments;
+    } catch (error) {
+      console.error('Failed to fetch comments:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Check if there are any coordinate requests in the latest post comments
+   */
+  async getRequestedCoordinates(): Promise<{ latitude: number; longitude: number; author: string } | null> {
+    try {
+      const comments = await this.getLatestPostComments();
+      
+      // Sort comments by timestamp to get the earliest request (first-come, first-served)
+      const sortedComments = comments.sort((a, b) => 
+        new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+      );
+      
+      for (const comment of sortedComments) {
+        const coordinates = parseCoordinatesFromText(comment.text);
+        if (coordinates) {
+          console.log(`Found coordinate request from @${comment.author}: ${coordinates.latitude}, ${coordinates.longitude}`);
+          return {
+            ...coordinates,
+            author: comment.author
+          };
+        }
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error checking for coordinate requests:', error);
+      return null;
+    }
+  }
+}
+
+/**
+ * Parse coordinates from comment text
+ * Supports format: "45.8326, 6.8652"
+ */
+function parseCoordinatesFromText(text: string): { latitude: number; longitude: number } | null {
+  const cleanText = text.trim();
+  
+  // Simple decimal coordinates "45.8326, 6.8652" or "48, 2"
+  const simplePattern = /(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)/;
+  const simpleMatch = cleanText.match(simplePattern);
+  
+  if (simpleMatch) {
+    const lat = parseFloat(simpleMatch[1]);
+    const lon = parseFloat(simpleMatch[2]);
+    
+    if (isValidCoordinate(lat, lon)) {
+      return { latitude: lat, longitude: lon };
+    }
+  }
+  
+  return null;
+}
+
+/**
+ * Validate that coordinates are within valid ranges
+ */
+export function isValidCoordinate(latitude: number, longitude: number): boolean {
+  return (
+    !isNaN(latitude) && 
+    !isNaN(longitude) &&
+    latitude >= -90 && 
+    latitude <= 90 && 
+    longitude >= -180 && 
+    longitude <= 180
+  );
 } 

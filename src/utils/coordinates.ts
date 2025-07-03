@@ -60,7 +60,6 @@ export function isCoordinateOnLand(coordinate: Coordinate): boolean {
     { minLat: 22, maxLat: 25, minLon: 120, maxLon: 122 }
   ];
   
-  // Use a fast for loop for performance
   for (let i = 0; i < landMasses.length; i++) {
     const landMass = landMasses[i];
     if (

@@ -127,37 +127,3 @@ export async function checkElevationRange(
   
   return { hasSufficientRange, minElevation, maxElevation };
 } 
-
-
-/**
- * Check if an area is mostly water using a sampling approach
- */
-export async function checkWaterArea(
-  centerCoord: Coordinate,
-  config: Config
-): Promise<{ isMostlyWater: boolean; waterPercentage: number }> {
-  const sampleArea = getCoordinateArea(centerCoord, config.geographic.areaSize * 0.5);
-  const sampleGrid = generateCoordinateGrid(sampleArea, 3);
-  
-  // Fetch elevation data for sample points
-  const elevationData: ElevationData[] = [];
-  for (const coord of sampleGrid) {
-    const response = await fetchElevation(coord.latitude, coord.longitude, config);
-    if (response.status === "success" && response.data.length > 0) {
-      elevationData.push(...response.data);
-    }
-  }
-  
-  if (elevationData.length === 0) {
-    return { isMostlyWater: true, waterPercentage: 100 };
-  }
-  
-  const elevations = elevationData.map(d => d.elevation);
-  const waterThreshold = 1; // Consider points with elevation <= 1m as water
-  const waterPointCount = elevations.filter(e => e <= waterThreshold).length;
-  const waterPercentage = (waterPointCount / elevations.length) * 100;
-  
-  console.log(`Water detection: ${waterPointCount}/${elevations.length} points (${waterPercentage.toFixed(1)}%) have elevation <= ${waterThreshold}m`);
-  
-  return { isMostlyWater: waterPercentage > 80, waterPercentage };
-} 

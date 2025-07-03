@@ -32,71 +32,7 @@ interface CachedTile {
 const tileCache = new Map<string, CachedTile>();
 const MAX_CACHE_SIZE = 1000; // Maximum number of tiles to cache
 
-const waterCoordinatesCache = new Map<string, boolean>();
-const MAX_WATER_CACHE_SIZE = 1000;
-
 type ElevationConfig = Config & { cachingEnabled?: boolean };
-
-/**
- * Check if a coordinate is on land (has elevation data)
- */
-export async function checkCoordinateIsLand(
-  latitude: number,
-  longitude: number,
-  config: Config
-): Promise<boolean> {
-  // First check the cache
-  const coordKey = `${latitude.toFixed(4)},${longitude.toFixed(4)}`;
-  if (waterCoordinatesCache.has(coordKey)) {
-    return !waterCoordinatesCache.get(coordKey);
-  }
-
-  try {
-    const { provider, apiKey, baseUrl } = config.apis.elevation;
-    
-    // For Mapbox, we can check if the tile exists
-    if (provider.toLowerCase() === "mapbox") {
-      if (!apiKey) {
-        throw new Error("Mapbox API key is required");
-      }
-      
-      const zoom = 14;
-      const tileCoords = getTileCoordinates(latitude, longitude, zoom);
-      const url = `${baseUrl}v4/mapbox.mapbox-terrain-dem-v1/${zoom}/${tileCoords.x}/${tileCoords.y}@2x.pngraw?access_token=${apiKey}`;
-      
-      // Just check if the tile exists with a HEAD request
-      const response = await fetch(url, {
-        method: "HEAD",
-        headers: {
-          "Accept": "image/png",
-        }
-      });
-      
-      const isLand = response.ok;
-      
-      // Cache the result
-      if (waterCoordinatesCache.size >= MAX_WATER_CACHE_SIZE) {
-        // Remove oldest entry
-        const oldestKey = waterCoordinatesCache.keys().next().value;
-        if (oldestKey) {
-          waterCoordinatesCache.delete(oldestKey);
-        }
-      }
-      
-      waterCoordinatesCache.set(coordKey, !isLand);
-      
-      return isLand;
-    }
-    
-    // For other providers, we have to do a full request
-    // Default to true and let the actual request handle it
-    return true;
-    
-  } catch (error) {
-    console.error(`Error checking if coordinate is on land: ${error}`);
-    return true; // Default to true if there's an error
-  }
-}
 
 /**
  * Fetches elevation data for a given coordinate
@@ -111,7 +47,7 @@ export async function fetchElevation(
   // Check for cached data first before anything else
   const tileKey = getTileKey(latitude, longitude);
   if (tileCache.has(tileKey)) {
-    console.log(`Using cached tile for: ${latitude}, ${longitude} (tile: ${tileKey})`);
+    //console.log(`Using cached tile for: ${latitude}, ${longitude} (tile: ${tileKey})`);
     try {
       // Get the cached tile
       const cachedTile = tileCache.get(tileKey);
@@ -146,42 +82,6 @@ export async function fetchElevation(
       console.warn(`Failed to use cached elevation data: ${error instanceof Error ? error.message : String(error)}`);
       // Continue to fetch from API
     }
-  }
-
-  // Check if in known water area - quick return without API call
-  if (
-    (latitude >= 40 && latitude <= 50 && longitude >= -11 && longitude <= 3) || // Rough Atlantic ocean area
-    (latitude >= 35 && latitude <= 43 && longitude >= 3 && longitude <= 20) ||  // Mediterranean sea area
-    // Pacific Ocean - eastern portion
-    (latitude >= -40 && latitude <= 40 && longitude >= 120 && longitude <= 180) || 
-    // Pacific Ocean - western portion (crossing date line)
-    (latitude >= -40 && latitude <= 40 && longitude >= -180 && longitude <= -120) ||
-    // Indian Ocean
-    (latitude >= -40 && latitude <= 40 && longitude >= 50 && longitude <= 100) || // Indian Ocean
-    // Arctic Ocean
-    (latitude >= 70 && latitude <= 90 && longitude >= -180 && longitude <= 180) || // Arctic Ocean
-    // Antarctic Ocean
-    (latitude >= -90 && latitude <= -60 && longitude >= -180 && longitude <= 180) // Antarctic Ocean
-  ) {
-    console.log(`Coordinates ${latitude}, ${longitude} are in known water area`);
-    return {
-      status: "success",
-      data: [{ latitude, longitude, elevation: 0 }],
-      isWater: true,
-      fromCache: false
-    };
-  }
-
-  // Check if coordinate is on land before making an API call
-  const isLand = await checkCoordinateIsLand(latitude, longitude, config);
-  if (!isLand) {
-    console.log(`Skipping water coordinate: ${latitude}, ${longitude}`);
-    return {
-      status: "success",
-      data: [{ latitude, longitude, elevation: 0 }],
-      isWater: true,
-      fromCache: false
-    };
   }
 
   // Fetch from configured provider
@@ -387,7 +287,7 @@ export async function testElevationAPI(config: Config): Promise<void> {
   const latitude = 27.9881;
   const longitude = 86.9250;
   
-  const result = await fetchElevation(latitude, longitude, config);
+  const result = await fetchElevation(latitude, longitude, config); // Keep water checking for testing
   
   if (result.status === "success" && result.data.length > 0) {
     console.log("Elevation API test successful!");

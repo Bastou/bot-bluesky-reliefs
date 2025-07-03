@@ -1,6 +1,6 @@
 # Bot Bluesky Reliefs
 
-A Deno-based bot that generates and posts daily visualizations of terrain elevation data from random global locations on Bluesky. 
+A Deno-based bot that generates and posts daily visualizations of terrain elevation data from random global locations on Bluesky. Users can request specific locations by commenting coordinates on the bot's latest post. 
 
 <p align="center">
   <img src="cover.png" alt="Bot Bluesky Reliefs Cover" width="360" />
