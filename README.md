@@ -10,7 +10,7 @@ A Deno-based bot that generates and posts daily visualizations of terrain elevat
 
 ## Requirements
 
-- [Deno](https://deno.land/) 
+- [Deno v1.40+](https://deno.land/) 
 - API key for elevation service (see Configuration)
 - Bluesky account with app password
 
@@ -45,6 +45,12 @@ For development with automatic reloading:
 deno task dev
 ```
 
+## How to Request Locations on bluesky
+
+Reply to any bot post with coordinates in the format lat,long: 45.8326, 6.8652 / 48,12 / 45.76402096632121, 4.835661483558657
+
+License
+MIT
 
 ## License
 
